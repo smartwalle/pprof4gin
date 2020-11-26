@@ -15,7 +15,7 @@ func Run(prefix string, r gin.IRoutes) {
 
 	var p = path.Join(prefix, "/debug/pprof/*action")
 
-	r.GET(p, func(c *gin.Context) {
+	r.Any(p, func(c *gin.Context) {
 		var nPath = strings.TrimPrefix(c.Request.URL.Path, prefix)
 		c.Request.URL.Path = nPath
 
