@@ -11,6 +11,14 @@ import (
 )
 
 func Run(prefix string, route gin.IRoutes) {
+	run(prefix, route, "")
+}
+
+func RunAddress(prefix, address string) {
+	run(prefix, nil, address)
+}
+
+func run(prefix string, route gin.IRoutes, address string) {
 	var nEngine *gin.Engine
 	if route == nil {
 		nEngine = gin.New()
@@ -20,7 +28,7 @@ func Run(prefix string, route gin.IRoutes) {
 
 	prefix = strings.TrimSpace(prefix)
 	if prefix != "" {
-		prefix = CleanPath(prefix)
+		prefix = cleanPath(prefix)
 	}
 
 	var p = path.Join(prefix, "/debug/pprof/*action")
@@ -46,14 +54,27 @@ func Run(prefix string, route gin.IRoutes) {
 	})
 
 	if nEngine != nil {
-		var listener, _ = net.Listen("tcp", "127.0.0.1:0")
+		if address == "" {
+			address = "127.0.0.1:0"
+		}
+
+		var addr, err = net.ResolveTCPAddr("tcp", address)
+		if err != nil {
+			addr, _ = net.ResolveTCPAddr("tcp", "127.0.0.1:0")
+		}
+
+		if addr != nil && addr.IP == nil {
+			addr.IP = net.IPv4(127, 0, 0, 1)
+		}
+
+		var listener, _ = net.ListenTCP("tcp", addr)
 		var nPath = fmt.Sprintf("%s%s/debug/pprof", listener.Addr().String(), prefix)
 		log.Printf("pprof is listening on http://%s", nPath)
 		go nEngine.RunListener(listener)
 	}
 }
 
-func CleanPath(p string) string {
+func cleanPath(p string) string {
 	// Turn empty string into "/"
 	if p == "" {
 		return "/"
