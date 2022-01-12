@@ -1,13 +1,23 @@
 package pprof4gin
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"log"
+	"net"
 	"net/http/pprof"
 	"path"
 	"strings"
 )
 
-func Run(prefix string, r gin.IRoutes) {
+func Run(prefix string, route gin.IRoutes) {
+	var nEngine *gin.Engine
+	if route == nil {
+		nEngine = gin.New()
+		nEngine.Use(gin.Logger(), gin.Recovery())
+		route = nEngine
+	}
+
 	prefix = strings.TrimSpace(prefix)
 	if prefix != "" {
 		prefix = CleanPath(prefix)
@@ -15,7 +25,7 @@ func Run(prefix string, r gin.IRoutes) {
 
 	var p = path.Join(prefix, "/debug/pprof/*action")
 
-	r.Any(p, func(c *gin.Context) {
+	route.Any(p, func(c *gin.Context) {
 		var nPath = strings.TrimPrefix(c.Request.URL.Path, prefix)
 		c.Request.URL.Path = nPath
 
@@ -34,6 +44,13 @@ func Run(prefix string, r gin.IRoutes) {
 			pprof.Index(c.Writer, c.Request)
 		}
 	})
+
+	if nEngine != nil {
+		var listener, _ = net.Listen("tcp", "127.0.0.1:0")
+		var nPath = fmt.Sprintf("%s%s/debug/pprof", listener.Addr().String(), prefix)
+		log.Printf("pprof is listening on http://%s", nPath)
+		go nEngine.RunListener(listener)
+	}
 }
 
 func CleanPath(p string) string {
